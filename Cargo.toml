@@ -1,0 +1,28 @@
+[package]
+name = "dunbrack"
+version = "0.1.0"
+authors = ["Tony Kan <tianchengkan@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/TKanX/dunbrack"
+edition = "2024"
+description = "A zero-cost Rust interface to the Dunbrack 2010 rotamer library with O(1) allocation-free lookups, bilinear interpolation, and binary-packed datasets for protein side-chain packing."
+keywords = ["biology", "bioinformatics", "protein", "no-std"]
+categories = ["science::computational-biology::structural-modeling", "no-std"]
+readme = "README.md"
+
+[build-dependencies]
+csv = "1.4.0"
+
+[dev-dependencies]
+approx = "0.5.1"
+proptest = "1.10.0"
+
+[lib]
+name = "dunbrack"
+path = "src/lib.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
