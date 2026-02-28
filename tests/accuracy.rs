@@ -9,35 +9,8 @@ use dunbrack::{
     Arg, Asn, Asp, Cpr, Cyd, Cyh, Cys, Gln, Glu, His, Ile, Leu, Lys, Met, Phe, Pro, Ser, Thr, Tpr,
     Trp, Tyr, Val,
 };
-use dunbrack::{Residue, Rotamer};
+use dunbrack::{Residue, Rotamer, for_all_residues};
 use std::path::Path;
-
-macro_rules! for_all_residues {
-    ($callback:ident) => {
-        $callback!(Arg, 4, 75, "ARG");
-        $callback!(Asn, 2, 36, "ASN");
-        $callback!(Asp, 2, 18, "ASP");
-        $callback!(Cpr, 3, 2, "CPR");
-        $callback!(Cyd, 1, 3, "CYD");
-        $callback!(Cyh, 1, 3, "CYH");
-        $callback!(Cys, 1, 3, "CYS");
-        $callback!(Gln, 3, 108, "GLN");
-        $callback!(Glu, 3, 54, "GLU");
-        $callback!(His, 2, 36, "HIS");
-        $callback!(Ile, 2, 9, "ILE");
-        $callback!(Leu, 2, 9, "LEU");
-        $callback!(Lys, 4, 73, "LYS");
-        $callback!(Met, 3, 27, "MET");
-        $callback!(Phe, 2, 18, "PHE");
-        $callback!(Pro, 3, 2, "PRO");
-        $callback!(Ser, 1, 3, "SER");
-        $callback!(Thr, 1, 3, "THR");
-        $callback!(Tpr, 3, 2, "TPR");
-        $callback!(Trp, 2, 36, "TRP");
-        $callback!(Tyr, 2, 18, "TYR");
-        $callback!(Val, 1, 3, "VAL");
-    };
-}
 
 trait RotamerAccess {
     fn prob(&self) -> f32;
@@ -132,13 +105,17 @@ where
     }
 }
 
-macro_rules! dispatch_verify {
-    ($row:expr; $($Res:ident, $n_chi:literal, $n_rot:literal, $tag:literal);+ $(;)?) => {
-        match $row.res.as_str() {
-            $( $tag => verify_row::<$Res>($row), )+
-            other => panic!("unknown residue: {other}"),
-        }
-    };
+fn dispatch_verify_row(row: &CsvRow) {
+    macro_rules! try_residue {
+        ($Res:ident, $_n_chi:literal, $_n_rot:literal) => {
+            if row.res == stringify!($Res).to_uppercase() {
+                verify_row::<$Res>(row);
+                return;
+            }
+        };
+    }
+    for_all_residues!(try_residue);
+    panic!("unknown residue: {}", row.res);
 }
 
 #[test]
@@ -188,30 +165,7 @@ fn test_full_table_round_trip() {
             chi_sig: [chi1_sig, chi2_sig, chi3_sig, chi4_sig],
         };
 
-        dispatch_verify!(&row;
-            Arg, 4, 75, "ARG";
-            Asn, 2, 36, "ASN";
-            Asp, 2, 18, "ASP";
-            Cpr, 3, 2, "CPR";
-            Cyd, 1, 3, "CYD";
-            Cyh, 1, 3, "CYH";
-            Cys, 1, 3, "CYS";
-            Gln, 3, 108, "GLN";
-            Glu, 3, 54, "GLU";
-            His, 2, 36, "HIS";
-            Ile, 2, 9, "ILE";
-            Leu, 2, 9, "LEU";
-            Lys, 4, 73, "LYS";
-            Met, 3, 27, "MET";
-            Phe, 2, 18, "PHE";
-            Pro, 3, 2, "PRO";
-            Ser, 1, 3, "SER";
-            Thr, 1, 3, "THR";
-            Tpr, 3, 2, "TPR";
-            Trp, 2, 36, "TRP";
-            Tyr, 2, 18, "TYR";
-            Val, 1, 3, "VAL";
-        );
+        dispatch_verify_row(&row);
     }
 
     assert_eq!(
@@ -308,14 +262,29 @@ fn test_gln_largest_rotamer_set() {
     assert_eq!(rots.len(), 108, "Gln should have exactly 108 rotamers");
 
     macro_rules! check_smaller {
-        ($Res:ident, $n_chi:literal, $n_rot:literal, $tag:literal) => {
+        ($Res:ident, $_n_chi:literal, $_n_rot:literal) => {
             assert!(
-                $n_rot <= 108,
+                <$Res as Residue>::N_ROTAMERS <= 108,
                 "{} has {} rotamers (> 108)",
                 stringify!($Res),
-                $n_rot
+                <$Res as Residue>::N_ROTAMERS
             );
         };
     }
     for_all_residues!(check_smaller);
+}
+
+#[test]
+fn test_residue_names() {
+    macro_rules! check_name {
+        ($Res:ident, $_n_chi:literal, $_n_rot:literal) => {
+            assert_eq!(
+                <$Res as Residue>::NAME,
+                stringify!($Res).to_uppercase(),
+                "{}: NAME mismatch",
+                stringify!($Res)
+            );
+        };
+    }
+    for_all_residues!(check_name);
 }
