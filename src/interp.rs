@@ -174,3 +174,58 @@ pub fn build_iter<const N: usize, const R: usize>(
 
     RotamerIter { items, idx: 0 }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_circular_mean_no_wrap() {
+        let mean = circular_mean([0.25; 4], [60.0; 4]);
+        assert_relative_eq!(mean, 60.0, epsilon = 0.01);
+    }
+
+    #[test]
+    fn test_circular_mean_wrap_around() {
+        let mean = circular_mean([0.5, 0.5, 0.0, 0.0], [170.0, -170.0, 0.0, 0.0]);
+        assert!(mean.abs() > 170.0, "expected |mean| > 170°, got {mean}");
+    }
+
+    #[test]
+    fn test_bilinear_uniform() {
+        let result = bilinear([0.25; 4], [4.0; 4]);
+        assert_relative_eq!(result, 4.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_bilinear_weighted() {
+        let result = bilinear([1.0, 0.0, 0.0, 0.0], [10.0, 20.0, 30.0, 40.0]);
+        assert_relative_eq!(result, 10.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_rotamer_iter_exact_size() {
+        let items = [
+            Rotamer {
+                r: [1],
+                prob: 0.6,
+                chi_mean: [60.0],
+                chi_sigma: [10.0],
+            },
+            Rotamer {
+                r: [2],
+                prob: 0.4,
+                chi_mean: [-60.0],
+                chi_sigma: [12.0],
+            },
+        ];
+        let mut iter = RotamerIter { items, idx: 0 };
+        assert_eq!(iter.len(), 2);
+        let _ = iter.next();
+        assert_eq!(iter.len(), 1);
+        let _ = iter.next();
+        assert_eq!(iter.len(), 0);
+        assert!(iter.next().is_none());
+    }
+}
