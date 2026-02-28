@@ -9,9 +9,9 @@ pub const GRID_STEP: f32 = 10.0;
 
 /// Number of grid points along each axis, φ and ψ (37).
 ///
-/// Indices 0 through 36 cover −180° to +180°; both endpoints carry identical
-/// data due to angular periodicity, eliminating the need for modular
-/// arithmetic during interpolation.
+/// Indices 0 through 36 cover −180° to +180° inclusive. Both endpoints carry
+/// identical data (angular periodicity), so bilinear interpolation always
+/// reads two adjacent indices without wrapping.
 pub const GRID_COUNT: usize = 37;
 
 /// Map a backbone dihedral angle (in degrees) to a grid index and fractional offset.
