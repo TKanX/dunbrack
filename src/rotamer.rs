@@ -14,7 +14,7 @@
 /// # Examples
 ///
 /// ```
-/// use dunbrack::{Rotamer, Val};
+/// use dunbrack::{Residue, Rotamer, Val};
 ///
 /// let rots: Vec<Rotamer<1>> = Val::rotamers(-60.0, -40.0).collect();
 /// assert_eq!(rots.len(), 3);
