@@ -19,9 +19,6 @@ pub const GRID_COUNT: usize = 37;
 /// The input is clamped to \[−180.0, 180.0\] before conversion. Returns
 /// `(lo, frac)` where `lo ∈ [0, 35]` and `frac ∈ [0.0, 1.0]`, suitable
 /// for bilinear interpolation between `table[lo]` and `table[lo + 1]`.
-///
-/// Both `clamp` and `.min(35)` compile to branchless instructions
-/// (`minss` / `CMOV`).
 #[inline(always)]
 pub fn angle_to_grid(deg: f32) -> (usize, f32) {
     // Map [-180, 180] → [0.0, 36.0].
