@@ -39,6 +39,9 @@ const GRID_MIN: f32 = -180.0;
 /// Grid step size in degrees.
 const GRID_STEP: f32 = 10.0;
 
+/// Degrees-to-radians factor.
+const DEG_TO_RAD: f64 = std::f64::consts::PI / 180.0;
+
 /// A parsed CSV row (rotamer bin indices stored as 4 u8s, padded with 0).
 #[derive(Debug, Clone)]
 struct RawRow {
@@ -118,7 +121,8 @@ fn main() {
             .get(csv_name)
             .unwrap_or_else(|| panic!("build.rs: residue '{csv_name}' not found in CSV"));
 
-        let table_name = format!("{}_TABLE", csv_name);
+        let table_name = format!("{csv_name}_TABLE");
+        let keys_name = format!("{csv_name}_KEYS");
 
         for (phi_idx, phi_row) in grid.iter().enumerate() {
             for (psi_idx, cell) in phi_row.iter().enumerate() {
@@ -145,17 +149,18 @@ fn main() {
         }
 
         for (cell_0, cell_36) in grid[0].iter().zip(grid[36].iter()) {
-            assert!(
-                cell_0.len() == cell_36.len(),
+            assert_eq!(
+                cell_0.len(),
+                cell_36.len(),
                 "build.rs: {csv_name} φ=-180/φ=180 rotamer count mismatch"
             );
 
-            let mut sorted_0: Vec<_> = cell_0.iter().collect();
-            let mut sorted_36: Vec<_> = cell_36.iter().collect();
-            sorted_0.sort_by_key(|row| row.r);
-            sorted_36.sort_by_key(|row| row.r);
+            let mut s0: Vec<_> = cell_0.iter().collect();
+            let mut s36: Vec<_> = cell_36.iter().collect();
+            s0.sort_by_key(|r| r.r);
+            s36.sort_by_key(|r| r.r);
 
-            for (a, b) in sorted_0.iter().zip(sorted_36.iter()) {
+            for (a, b) in s0.iter().zip(s36.iter()) {
                 assert!(
                     a.r == b.r
                         && a.prob == b.prob
@@ -169,17 +174,18 @@ fn main() {
         for (phi_idx, phi_row) in grid.iter().enumerate() {
             let cell_0 = &phi_row[0];
             let cell_36 = &phi_row[36];
-            assert!(
-                cell_0.len() == cell_36.len(),
+            assert_eq!(
+                cell_0.len(),
+                cell_36.len(),
                 "build.rs: {csv_name} ψ=-180/ψ=180 rotamer count mismatch at φ idx {phi_idx}"
             );
 
-            let mut sorted_0: Vec<_> = cell_0.iter().collect();
-            let mut sorted_36: Vec<_> = cell_36.iter().collect();
-            sorted_0.sort_by_key(|row| row.r);
-            sorted_36.sort_by_key(|row| row.r);
+            let mut s0: Vec<_> = cell_0.iter().collect();
+            let mut s36: Vec<_> = cell_36.iter().collect();
+            s0.sort_by_key(|r| r.r);
+            s36.sort_by_key(|r| r.r);
 
-            for (a, b) in sorted_0.iter().zip(sorted_36.iter()) {
+            for (a, b) in s0.iter().zip(s36.iter()) {
                 assert!(
                     a.r == b.r
                         && a.prob == b.prob
@@ -208,25 +214,53 @@ fn main() {
                 assert!(
                     cell_keys == canonical_keys,
                     "build.rs: {csv_name} cell ({phi_idx},{psi_idx}) has different \
-                     r[] key set than cell (0,0)"
+                     bin index key set than cell (0,0)"
                 );
             }
         }
 
+        emit_keys(&mut out, &keys_name, n_chi, &canonical_keys);
         emit_table(&mut out, &table_name, n_chi, n_rotamers, &sorted_grid);
-
-        emit_impl(&mut out, rust_name, &table_name, n_chi, n_rotamers);
+        emit_impl(
+            &mut out,
+            rust_name,
+            csv_name,
+            &table_name,
+            &keys_name,
+            n_chi,
+            n_rotamers,
+        );
     }
+
+    emit_for_all_residues_macro(&mut out);
 }
 
-/// Converts a grid angle (-180..180, step 10) to a table index (0..36).
+/// Converts a grid angle (−180..180, step 10) to a table index (0..36).
 fn angle_to_index(deg: f32) -> usize {
     let idx = ((deg - GRID_MIN) / GRID_STEP).round() as usize;
     assert!(idx < GRID_COUNT, "build.rs: angle {deg}° out of grid range");
     idx
 }
 
-/// Emits a `static TABLE: [[[Rotamer<N>; R]; 37]; 37]` declaration.
+/// Emits a `static KEYS: [[u8; N]; R]` array containing the deduplicated
+/// rotamer bin indices. Since the bin indices are identical across all 37×37
+/// cells for any given residue (asserted above), storing them once saves
+/// R×37×37×N bytes.
+fn emit_keys(out: &mut fs::File, keys_name: &str, n_chi: usize, canonical_keys: &[[u8; 4]]) {
+    let n_rotamers = canonical_keys.len();
+    writeln!(out, "static {keys_name}: [[u8; {n_chi}]; {n_rotamers}] = [").unwrap();
+    for key in canonical_keys {
+        let elems: Vec<String> = key[..n_chi].iter().map(|b| b.to_string()).collect();
+        writeln!(out, "[{}],", elems.join(", ")).unwrap();
+    }
+    writeln!(out, "];").unwrap();
+    writeln!(out).unwrap();
+}
+
+/// Emits a `static TABLE: [[[GridEntry<N>; R]; 37]; 37]` declaration.
+///
+/// Each `GridEntry` stores the rotamer probability, precomputed `(sin χᵢ, cos χᵢ)`
+/// pairs for all χ angles, and per-χ standard deviations.
 fn emit_table(
     out: &mut fs::File,
     table_name: &str,
@@ -236,7 +270,7 @@ fn emit_table(
 ) {
     writeln!(
         out,
-        "static {table_name}: [[[crate::rotamer::Rotamer<{n_chi}>; {n_rotamers}]; \
+        "static {table_name}: [[[crate::interp::GridEntry<{n_chi}>; {n_rotamers}]; \
          {GRID_COUNT}]; {GRID_COUNT}] = ["
     )
     .unwrap();
@@ -246,7 +280,7 @@ fn emit_table(
         for cell in phi_row.iter() {
             writeln!(out, "[").unwrap();
             for row in cell.iter() {
-                emit_rotamer(out, row, n_chi);
+                emit_grid_entry(out, row, n_chi);
             }
             writeln!(out, "],").unwrap();
         }
@@ -257,25 +291,35 @@ fn emit_table(
     writeln!(out).unwrap();
 }
 
-/// Emits a single `Rotamer { r, prob, chi_mean, chi_sigma }` literal.
-fn emit_rotamer(out: &mut fs::File, row: &RawRow, n_chi: usize) {
-    write!(out, "crate::rotamer::Rotamer {{ r: [").unwrap();
+/// Emits a single `GridEntry { prob, chi_sin, chi_cos, chi_sigma }` literal.
+///
+/// `chi_sin[i]` = sin(chi_val[i] × π/180), `chi_cos[i]` = cos(chi_val[i] × π/180).
+/// Using f64 for the intermediate computation preserves full f32 precision.
+fn emit_grid_entry(out: &mut fs::File, row: &RawRow, n_chi: usize) {
+    write!(
+        out,
+        "crate::interp::GridEntry {{ prob: {}_f32, ",
+        format_f32(row.prob)
+    )
+    .unwrap();
+
+    write!(out, "chi_sin: [").unwrap();
     for i in 0..n_chi {
         if i > 0 {
             write!(out, ", ").unwrap();
         }
-        write!(out, "{}", row.r[i]).unwrap();
+        let sin_val = ((row.chi_val[i] as f64) * DEG_TO_RAD).sin() as f32;
+        write!(out, "{}_f32", format_f32(sin_val)).unwrap();
     }
     write!(out, "], ").unwrap();
 
-    write!(out, "prob: {}_f32, ", format_f32(row.prob)).unwrap();
-
-    write!(out, "chi_mean: [").unwrap();
+    write!(out, "chi_cos: [").unwrap();
     for i in 0..n_chi {
         if i > 0 {
             write!(out, ", ").unwrap();
         }
-        write!(out, "{}_f32", format_f32(row.chi_val[i])).unwrap();
+        let cos_val = ((row.chi_val[i] as f64) * DEG_TO_RAD).cos() as f32;
+        write!(out, "{}_f32", format_f32(cos_val)).unwrap();
     }
     write!(out, "], ").unwrap();
 
@@ -298,7 +342,9 @@ fn format_f32(v: f32) -> String {
 fn emit_impl(
     out: &mut fs::File,
     rust_name: &str,
+    csv_name: &str,
     table_name: &str,
+    keys_name: &str,
     n_chi: usize,
     n_rotamers: usize,
 ) {
@@ -315,6 +361,7 @@ fn emit_impl(
     .unwrap();
     writeln!(out, "    const N_CHI: usize = {n_chi};").unwrap();
     writeln!(out, "    const N_ROTAMERS: usize = {n_rotamers};").unwrap();
+    writeln!(out, "    const NAME: &'static str = \"{csv_name}\";").unwrap();
     writeln!(out, "    type Rot = crate::rotamer::Rotamer<{n_chi}>;").unwrap();
     writeln!(
         out,
@@ -329,10 +376,49 @@ fn emit_impl(
     .unwrap();
     writeln!(
         out,
-        "        crate::interp::build_iter(&{table_name}, phi, psi)"
+        "        crate::interp::build_iter(&{table_name}, &{keys_name}, phi, psi)"
     )
     .unwrap();
     writeln!(out, "    }}").unwrap();
     writeln!(out, "}}").unwrap();
     writeln!(out).unwrap();
+}
+
+/// Emits the `for_all_residues!` macro exported from the crate root.
+fn emit_for_all_residues_macro(out: &mut fs::File) {
+    writeln!(
+        out,
+        "/// Invokes `$callback!(Type, N_CHI, N_ROTAMERS)` for all 22 residue types."
+    )
+    .unwrap();
+    writeln!(out, "///").unwrap();
+    writeln!(out, "/// # Examples").unwrap();
+    writeln!(out, "///").unwrap();
+    writeln!(out, "/// ```").unwrap();
+    writeln!(out, "/// # use dunbrack::*;").unwrap();
+    writeln!(out, "/// use dunbrack::for_all_residues;").unwrap();
+    writeln!(out, "///").unwrap();
+    writeln!(out, "/// macro_rules! check {{").unwrap();
+    writeln!(out, "///     ($Res:ident, $_n:literal, $_r:literal) => {{").unwrap();
+    writeln!(
+        out,
+        "///         assert!(<$Res as Residue>::N_ROTAMERS > 0);"
+    )
+    .unwrap();
+    writeln!(out, "///     }};").unwrap();
+    writeln!(out, "/// }}").unwrap();
+    writeln!(out, "/// for_all_residues!(check);").unwrap();
+    writeln!(out, "/// ```").unwrap();
+    writeln!(out, "#[macro_export]").unwrap();
+    writeln!(out, "macro_rules! for_all_residues {{").unwrap();
+    writeln!(out, "    ($callback:ident) => {{").unwrap();
+    for &(_, rust_name, n_chi, n_rotamers) in RESIDUES {
+        writeln!(
+            out,
+            "        $callback!({rust_name}, {n_chi}, {n_rotamers});"
+        )
+        .unwrap();
+    }
+    writeln!(out, "    }};").unwrap();
+    writeln!(out, "}}").unwrap();
 }
