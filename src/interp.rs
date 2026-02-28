@@ -201,15 +201,23 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
 
+    fn deg_to_sc(deg: f32) -> (f32, f32) {
+        let rad = deg * (core::f32::consts::PI / 180.0);
+        (rad.sin(), rad.cos())
+    }
+
     #[test]
-    fn test_circular_mean_no_wrap() {
-        let mean = circular_mean([0.25; 4], [60.0; 4]);
+    fn test_chi_mean_from_sc_no_wrap() {
+        let (s, c) = deg_to_sc(60.0);
+        let mean = chi_mean_from_sc([0.25; 4], [s; 4], [c; 4]);
         assert_relative_eq!(mean, 60.0, epsilon = 0.01);
     }
 
     #[test]
-    fn test_circular_mean_wrap_around() {
-        let mean = circular_mean([0.5, 0.5, 0.0, 0.0], [170.0, -170.0, 0.0, 0.0]);
+    fn test_chi_mean_from_sc_wrap_around() {
+        let (s0, c0) = deg_to_sc(170.0);
+        let (s1, c1) = deg_to_sc(-170.0);
+        let mean = chi_mean_from_sc([0.5, 0.5, 0.0, 0.0], [s0, s1, 0.0, 0.0], [c0, c1, 0.0, 0.0]);
         assert!(mean.abs() > 170.0, "expected |mean| > 170°, got {mean}");
     }
 
