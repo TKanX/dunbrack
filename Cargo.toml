@@ -10,6 +10,9 @@ keywords = ["biology", "bioinformatics", "protein", "no-std"]
 categories = ["science::computational-biology::structural-modeling", "no-std"]
 readme = "README.md"
 
+[dependencies]
+libm = "0.2.16"
+
 [build-dependencies]
 csv = "1.4.0"
 
