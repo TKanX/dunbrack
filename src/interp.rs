@@ -1,6 +1,23 @@
 use crate::grid::{GRID_COUNT, angle_to_grid};
-use crate::math::{atan2f, cosf, sinf};
+use crate::math::atan2f;
 use crate::rotamer::Rotamer;
+
+/// One rotamer entry in the (φ, ψ) static lookup table.
+///
+/// Holds the rotamer probability at this grid point, precomputed `(sin χᵢ, cos χᵢ)`
+/// pairs for each χ angle, and per-χ standard deviations.
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct GridEntry<const N: usize> {
+    /// Rotamer probability at this grid point.
+    pub prob: f32,
+    /// sin(χᵢ_mean) for each χ angle, precomputed at build time.
+    pub chi_sin: [f32; N],
+    /// cos(χᵢ_mean) for each χ angle, precomputed at build time.
+    pub chi_cos: [f32; N],
+    /// Standard deviation of each χ angle in degrees.
+    pub chi_sigma: [f32; N],
+}
 
 /// Eagerly constructed iterator over bilinearly interpolated rotamers.
 ///
@@ -57,23 +74,22 @@ impl<const N: usize, const R: usize> ExactSizeIterator for RotamerIter<N, R> {
 
 impl<const N: usize, const R: usize> core::iter::FusedIterator for RotamerIter<N, R> {}
 
-/// Degrees-to-radians conversion factor.
-const DEG_TO_RAD: f32 = core::f32::consts::PI / 180.0;
-
 /// Radians-to-degrees conversion factor.
 const RAD_TO_DEG: f32 = 180.0 / core::f32::consts::PI;
 
-/// Computes the circular weighted mean of four angles (in degrees).
+/// Recovers a χ mean angle in degrees from a bilinearly weighted sum of
+/// `(sin, cos)` pairs.
 ///
-/// Uses sin/cos decomposition to correctly handle the ±180° discontinuity.
+/// Accumulates the weighted sin and cos components over the four surrounding
+/// grid cells, then applies `atan2f` once to obtain the circular mean.
 /// Returns a value in (−180°, 180°].
-fn circular_mean(weights: [f32; 4], angles: [f32; 4]) -> f32 {
+#[inline]
+fn chi_mean_from_sc(weights: [f32; 4], sins: [f32; 4], coss: [f32; 4]) -> f32 {
     let mut sin_sum = 0.0_f32;
     let mut cos_sum = 0.0_f32;
     for i in 0..4 {
-        let rad = angles[i] * DEG_TO_RAD;
-        sin_sum += weights[i] * sinf(rad);
-        cos_sum += weights[i] * cosf(rad);
+        sin_sum += weights[i] * sins[i];
+        cos_sum += weights[i] * coss[i];
     }
     atan2f(sin_sum, cos_sum) * RAD_TO_DEG
 }
@@ -88,8 +104,12 @@ fn bilinear(weights: [f32; 4], values: [f32; 4]) -> f32 {
 }
 
 /// Build a [`RotamerIter`] by bilinearly interpolating four grid-point cells.
+///
+/// `keys` contains the rotamer bin indices shared across all grid cells for
+/// this residue.
 pub fn build_iter<const N: usize, const R: usize>(
-    table: &[[[Rotamer<N>; R]; GRID_COUNT]; GRID_COUNT],
+    table: &[[[GridEntry<N>; R]; GRID_COUNT]; GRID_COUNT],
+    keys: &[[u8; N]; R],
     phi: f32,
     psi: f32,
 ) -> RotamerIter<N, R> {
@@ -104,7 +124,7 @@ pub fn build_iter<const N: usize, const R: usize>(
         frac_phi * frac_psi,                 // w11
     ];
 
-    // Four corner cell references (contiguous rotamer slices).
+    // Four corner cell references (contiguous entry slices).
     let corners = [
         &table[lo_phi][lo_psi],
         &table[lo_phi + 1][lo_psi],
@@ -114,12 +134,6 @@ pub fn build_iter<const N: usize, const R: usize>(
 
     // Eagerly compute all R interpolated rotamers.
     let mut items: [Rotamer<N>; R] = core::array::from_fn(|k| {
-        // r[] key is identical across all four corners (guaranteed by build.rs sort).
-        let r = corners[0][k].r;
-        debug_assert_eq!(r, corners[1][k].r);
-        debug_assert_eq!(r, corners[2][k].r);
-        debug_assert_eq!(r, corners[3][k].r);
-
         let prob = bilinear(
             w,
             [
@@ -131,13 +145,19 @@ pub fn build_iter<const N: usize, const R: usize>(
         );
 
         let chi_mean: [f32; N] = core::array::from_fn(|i| {
-            circular_mean(
+            chi_mean_from_sc(
                 w,
                 [
-                    corners[0][k].chi_mean[i],
-                    corners[1][k].chi_mean[i],
-                    corners[2][k].chi_mean[i],
-                    corners[3][k].chi_mean[i],
+                    corners[0][k].chi_sin[i],
+                    corners[1][k].chi_sin[i],
+                    corners[2][k].chi_sin[i],
+                    corners[3][k].chi_sin[i],
+                ],
+                [
+                    corners[0][k].chi_cos[i],
+                    corners[1][k].chi_cos[i],
+                    corners[2][k].chi_cos[i],
+                    corners[3][k].chi_cos[i],
                 ],
             )
         });
@@ -155,7 +175,7 @@ pub fn build_iter<const N: usize, const R: usize>(
         });
 
         Rotamer {
-            r,
+            r: keys[k],
             prob,
             chi_mean,
             chi_sigma,
