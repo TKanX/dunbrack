@@ -31,3 +31,58 @@ pub fn angle_to_grid(deg: f32) -> (usize, f32) {
     let frac = shifted - lo as f32;
     (lo, frac)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_angle_to_grid_at_minus_180() {
+        let (lo, frac) = angle_to_grid(-180.0);
+        assert_eq!(lo, 0);
+        assert_relative_eq!(frac, 0.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_angle_to_grid_at_plus_180() {
+        let (lo, frac) = angle_to_grid(180.0);
+        assert_eq!(lo, 35);
+        assert_relative_eq!(frac, 1.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_angle_to_grid_at_zero() {
+        let (lo, frac) = angle_to_grid(0.0);
+        assert_eq!(lo, 18);
+        assert_relative_eq!(frac, 0.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_angle_to_grid_midpoint() {
+        let (lo, frac) = angle_to_grid(-175.0);
+        assert_eq!(lo, 0);
+        assert_relative_eq!(frac, 0.5, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_angle_to_grid_clamp_below() {
+        let (lo, frac) = angle_to_grid(-200.0);
+        assert_eq!(lo, 0);
+        assert_relative_eq!(frac, 0.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_angle_to_grid_clamp_above() {
+        let (lo, frac) = angle_to_grid(200.0);
+        assert_eq!(lo, 35);
+        assert_relative_eq!(frac, 1.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_angle_to_grid_exact_grid_point() {
+        let (lo, frac) = angle_to_grid(-60.0);
+        assert_eq!(lo, 12);
+        assert_relative_eq!(frac, 0.0, epsilon = 1e-6);
+    }
+}
