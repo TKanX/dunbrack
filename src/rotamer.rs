@@ -67,7 +67,7 @@ mod tests {
             chi_sigma: [10.0, 12.0],
         };
         let copy = rot;
-        let clone = rot.clone();
+        let clone = <Rotamer<2> as Clone>::clone(&rot);
 
         assert_eq!(rot, copy);
         assert_eq!(rot, clone);
