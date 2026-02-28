@@ -52,3 +52,39 @@ pub struct Rotamer<const N: usize> {
     /// weighting — no circular treatment is needed for positive scalars.
     pub chi_sigma: [f32; N],
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_rotamer_copy_clone() {
+        let rot = Rotamer {
+            r: [1, 2],
+            prob: 0.5,
+            chi_mean: [60.0, -60.0],
+            chi_sigma: [10.0, 12.0],
+        };
+        let copy = rot;
+        let clone = rot.clone();
+
+        assert_eq!(rot, copy);
+        assert_eq!(rot, clone);
+    }
+
+    #[test]
+    fn test_rotamer_fields() {
+        let rot = Rotamer {
+            r: [3],
+            prob: 0.42,
+            chi_mean: [175.0],
+            chi_sigma: [8.5],
+        };
+
+        assert_eq!(rot.r, [3]);
+        assert_relative_eq!(rot.prob, 0.42, epsilon = 1e-6);
+        assert_relative_eq!(rot.chi_mean[0], 175.0, epsilon = 1e-6);
+        assert_relative_eq!(rot.chi_sigma[0], 8.5, epsilon = 1e-6);
+    }
+}
