@@ -1,4 +1,5 @@
 use crate::grid::{GRID_COUNT, angle_to_grid};
+use crate::math::{atan2f, cosf, sinf};
 use crate::rotamer::Rotamer;
 
 /// Eagerly constructed iterator over bilinearly interpolated rotamers.
@@ -71,10 +72,10 @@ fn circular_mean(weights: [f32; 4], angles: [f32; 4]) -> f32 {
     let mut cos_sum = 0.0_f32;
     for i in 0..4 {
         let rad = angles[i] * DEG_TO_RAD;
-        sin_sum += weights[i] * libm::sinf(rad);
-        cos_sum += weights[i] * libm::cosf(rad);
+        sin_sum += weights[i] * sinf(rad);
+        cos_sum += weights[i] * cosf(rad);
     }
-    libm::atan2f(sin_sum, cos_sum) * RAD_TO_DEG
+    atan2f(sin_sum, cos_sum) * RAD_TO_DEG
 }
 
 /// Computes a bilinear combination of four scalar values.

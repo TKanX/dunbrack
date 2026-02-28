@@ -2,6 +2,7 @@
 
 mod grid;
 mod interp;
+mod math;
 mod residue;
 mod rotamer;
 mod sealed;
