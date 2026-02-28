@@ -54,3 +54,33 @@ impl<const N: usize, const R: usize> ExactSizeIterator for RotamerIter<N, R> {
 }
 
 impl<const N: usize, const R: usize> core::iter::FusedIterator for RotamerIter<N, R> {}
+
+/// Degrees-to-radians conversion factor.
+const DEG_TO_RAD: f32 = core::f32::consts::PI / 180.0;
+
+/// Radians-to-degrees conversion factor.
+const RAD_TO_DEG: f32 = 180.0 / core::f32::consts::PI;
+
+/// Computes the circular weighted mean of four angles (in degrees).
+///
+/// Uses sin/cos decomposition to correctly handle the ±180° discontinuity.
+/// Returns a value in (−180°, 180°].
+fn circular_mean(weights: [f32; 4], angles: [f32; 4]) -> f32 {
+    let mut sin_sum = 0.0_f32;
+    let mut cos_sum = 0.0_f32;
+    for i in 0..4 {
+        let rad = angles[i] * DEG_TO_RAD;
+        sin_sum += weights[i] * libm::sinf(rad);
+        cos_sum += weights[i] * libm::cosf(rad);
+    }
+    libm::atan2f(sin_sum, cos_sum) * RAD_TO_DEG
+}
+
+/// Computes a bilinear combination of four scalar values.
+#[inline]
+fn bilinear(weights: [f32; 4], values: [f32; 4]) -> f32 {
+    weights[0] * values[0]
+        + weights[1] * values[1]
+        + weights[2] * values[2]
+        + weights[3] * values[3]
+}
