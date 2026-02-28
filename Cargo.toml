@@ -18,6 +18,7 @@ csv = "1.4.0"
 
 [dev-dependencies]
 approx = "0.5.1"
+csv = "1.4.0"
 proptest = "1.10.0"
 
 [lib]
