@@ -25,6 +25,9 @@ pub trait Residue: Sealed + Copy + 'static {
     /// Number of distinct rotamers per (φ, ψ) grid cell.
     const N_ROTAMERS: usize;
 
+    /// Three-letter residue name (uppercase ASCII, e.g. `"ARG"`, `"VAL"`).
+    const NAME: &'static str;
+
     /// Concrete rotamer type, always `Rotamer<{N_CHI}>`.
     type Rot: Copy + 'static;
 
