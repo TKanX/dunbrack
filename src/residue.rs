@@ -49,3 +49,91 @@ pub trait Residue: Sealed + Copy + 'static {
     /// ```
     fn rotamers(phi: f32, psi: f32) -> Self::Iter;
 }
+
+/// Arginine (4 χ angles, 75 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Arg;
+
+/// Asparagine (2 χ angles, 36 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Asn;
+
+/// Aspartate (2 χ angles, 18 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Asp;
+
+/// Cis-proline (3 χ angles, 2 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Cpr;
+
+/// Disulfide-bonded cysteine (1 χ angle, 3 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Cyd;
+
+/// Free (non-disulfide) cysteine (1 χ angle, 3 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Cyh;
+
+/// Combined cysteine pool (1 χ angle, 3 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Cys;
+
+/// Glutamine (3 χ angles, 108 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Gln;
+
+/// Glutamate (3 χ angles, 54 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Glu;
+
+/// Histidine (2 χ angles, 36 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct His;
+
+/// Isoleucine (2 χ angles, 9 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Ile;
+
+/// Leucine (2 χ angles, 9 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Leu;
+
+/// Lysine (4 χ angles, 73 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Lys;
+
+/// Methionine (3 χ angles, 27 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Met;
+
+/// Phenylalanine (2 χ angles, 18 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Phe;
+
+/// Combined proline pool (3 χ angles, 2 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Pro;
+
+/// Serine (1 χ angle, 3 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Ser;
+
+/// Threonine (1 χ angle, 3 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Thr;
+
+/// Trans-proline (3 χ angles, 2 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Tpr;
+
+/// Tryptophan (2 χ angles, 36 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Trp;
+
+/// Tyrosine (2 χ angles, 18 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Tyr;
+
+/// Valine (1 χ angle, 3 rotamers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Val;
