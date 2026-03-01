@@ -145,6 +145,12 @@ fn main() {
                             "build.rs: {csv_name} cell ({phi_idx},{psi_idx}) has r{j}=0",
                             j = i + 1
                         );
+                        assert!(
+                            row.chi_sig[i] > 0.0,
+                            "build.rs: {csv_name} cell ({phi_idx},{psi_idx}) has chi_sigma[{j}]={v}",
+                            j = i + 1,
+                            v = row.chi_sig[i]
+                        );
                     }
                 }
 
