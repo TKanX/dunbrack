@@ -134,10 +134,13 @@ fn main() {
                 );
 
                 for row in cell {
-                    assert!(
-                        row.r[0] > 0,
-                        "build.rs: {csv_name} cell ({phi_idx},{psi_idx}) has r1=0"
-                    );
+                    for i in 0..n_chi {
+                        assert!(
+                            row.r[i] > 0,
+                            "build.rs: {csv_name} cell ({phi_idx},{psi_idx}) has r{j}=0",
+                            j = i + 1
+                        );
+                    }
                 }
 
                 let prob_sum: f32 = cell.iter().map(|row| row.prob).sum();
