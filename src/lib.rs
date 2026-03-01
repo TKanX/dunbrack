@@ -17,7 +17,7 @@
 //! - **Bilinear interpolation with circular χ means.** `Residue::rotamers(phi, psi)` bilinearly interpolates across the four surrounding grid cells. χ means are computed via circular weighted mean (sin/cos decomposition), correctly handling the ±180° wraparound. Probabilities are re-normalized to Σ = 1.0 after interpolation.
 //! - **Precomputed (sin χ, cos χ) in the static table.** `build.rs` stores sin/cos pairs rather than raw angles, eliminating 8N trigonometric calls per query (4 sin + 4 cos per χ angle, per corner cell).
 //! - **Custom branchless `atan2f`.** A two-stage argument-reduction + degree-7 Taylor polynomial implementation with zero conditional branches and ±0.002° maximum error — 25× more accurate than the 0.05° precision requirement, with no libm dependency.
-//! - **Compile-time data integrity.** `build.rs` asserts five invariants before emitting any code: rotamer count, probability sums, φ/ψ = ±180° periodicity, and bin index consistency across all 1,369 grid cells. Compilation fails loudly on data corruption.
+//! - **Compile-time data integrity.** `build.rs` asserts seven invariants before emitting any code: rotamer count, per-row non-negative probabilities, probability sums, per-χ positive standard deviations, φ/ψ = ±180° periodicity, and bin index consistency across all 1,369 grid cells. Compilation fails loudly on data corruption.
 //! - **`for_all_residues!` macro.** A generated declarative macro for writing generic code over all 22 residue types without runtime dispatch.
 //!
 //! ---
@@ -190,7 +190,9 @@
 //! **Compile time (`build.rs` assertions)** — compilation aborts if any of the following fail:
 //!
 //! - Rotamer count per cell matches the registered `N_ROTAMERS`
+//! - Every rotamer probability ≥ 0
 //! - Probability sum per cell ∈ [0.99, 1.01]
+//! - Per-χ standard deviation > 0 for every rotamer in every cell
 //! - φ = −180° and φ = +180° cells are bitwise identical (periodic boundary)
 //! - ψ = −180° and ψ = +180° cells are bitwise identical
 //! - bin index key sets are identical across all 1,369 cells for each residue
@@ -203,11 +205,11 @@
 //!
 //! **Integration tests** (140 tests in `tests/`):
 //!
-//! | File               | Tests | What is verified                                                                                                                                  |
-//! | :----------------- | ----: | :------------------------------------------------------------------------------------------------------------------------------------------------ |
-//! | `accuracy.rs`      |     8 | Full 740,629-row CSV round-trip; `\|prob_err\| < 1e-5`, `\|chi_mean_err\| < 0.05°` at every grid point                                            |
-//! | `coverage.rs`      |    44 | Every (residue, φ, ψ) combination on the 37×37 grid: correct count, Σprob ≈ 1.0, valid ranges; 220,000 random (φ, ψ) fuzz inputs per residue type |
-//! | `interpolation.rs` |    88 | Determinacy, continuity (Δprob < 0.05 per 0.1° step), circular χ wrap correctness, normalization at 32×32 off-grid angles                         |
+//! | File               | Tests | What is verified                                                                                                                                                 |
+//! | :----------------- | :---: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+//! | `accuracy.rs`      |   8   | Full 740,629-row CSV round-trip; `\|prob_err\| < 1e-5`, `\|chi_mean_err\| < 0.05°` at every grid point                                                           |
+//! | `coverage.rs`      |  44   | Every (residue, φ, ψ) combination on the 37×37 grid: correct count, Σprob ≈ 1.0, valid ranges; 10,000 random (φ, ψ) fuzz inputs per residue type (220,000 total) |
+//! | `interpolation.rs` |  88   | Determinacy, continuity (Δprob < 0.05 per 0.1° step), circular χ wrap correctness, normalization at 32×32 off-grid angles                                        |
 //!
 //! The `atan2f` error of ±0.002° is 25× below the 0.05° accuracy threshold, meaning the precision ceiling is the source data (CSV values are stored to one decimal place), not the implementation.
 //!
