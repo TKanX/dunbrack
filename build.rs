@@ -134,6 +134,11 @@ fn main() {
                 );
 
                 for row in cell {
+                    assert!(
+                        row.prob >= 0.0,
+                        "build.rs: {csv_name} cell ({phi_idx},{psi_idx}) has negative prob={v}",
+                        v = row.prob
+                    );
                     for i in 0..n_chi {
                         assert!(
                             row.r[i] > 0,
