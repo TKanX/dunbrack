@@ -4,7 +4,7 @@
 //!
 //! Provides bilinearly interpolated side-chain rotamer probabilities, mean χ angles, and standard deviations for 22 amino acid types at any (φ, ψ) backbone conformation. All 740,629 source rows are baked into `.rodata` at compile time; queries touch zero heap memory and link zero runtime dependencies.
 //!
-//! [Features](#features) • [Installation](#installation) • [Usage](#usage) • [Residue Types](#residue-types) • [Performance](#performance) • [Verification](#verification) • [License](#license)
+//! [Features](#features) • [Installation](#installation) • [Usage](#usage) • [Residue Types](#residue-types) • [Performance](#performance) • [Verification](#verification)
 //!
 //! ---
 //!
